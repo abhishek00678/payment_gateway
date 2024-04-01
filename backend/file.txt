@@ -1,0 +1,86 @@
+import express from "express";
+import { config } from "dotenv";
+// import paymentRoute from "./route/payment.js";
+import cors from "cors";
+import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// export const app = express();
+const app = express();
+app.use(express.json());
+
+config({
+  path: "./database/config.env",
+});
+
+// Enable CORS for specific origin
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Allow only this origin to access
+    credentials: true, // Allow cookies to be sent and received
+  })
+);
+
+// app.use("/api/payment", paymentRoute);
+
+app.post("/checkout", async (req, res) => {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: req.body.item.map((item) => {
+        return {
+          price_data: {
+            currency: "inr",
+            product_data: {
+              name: item.name,
+            },
+          },
+        };
+      }),
+    });
+  } catch (error) {}
+});
+
+app.listen(process.env.PORT, () => {
+  console.log(`server is running at port :${process.env.PORT}`);
+});
+
+// app.use("/api/payment", paymentRoute);
+
+// export default app;
+
+
+
+
+
+
+
+
+app.post("/checkout", async (req, res) => {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: req.body.items.map((item) => {
+        // Corrected to items to match expected request structure
+        return {
+          price_data: {
+            currency: "inr",
+            product_data: {
+              name: item.name,
+            },
+            unit_amount: item.price * 100, // Ensure item.price is in the smallest currency unit (e.g., cents for USD)
+          },
+          quantity: item.quantity,
+        };
+      }),
+      success_url: `${req.headers.origin}/thanks`, // Dynamically set the origin for redirection
+      cancel_url: `${req.headers.origin}/cancel`,
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("Error creating Stripe checkout session:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});

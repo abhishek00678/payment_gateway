@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import CheckoutForm from "./CheckoutForm";
+import "./checkout.css";
 
 const stripePromise = loadStripe(
   "pk_test_51OzZ2cSCVBiqJU7SzyqD4wqDPqpfyxJ6qQ5JAO5uskukKVRODSXWDiOCvQAlmGrkjTfiUnd4U3jx23RpbMLQaWEt00kujf7BXX"
@@ -9,43 +12,26 @@ function Buy() {
   const [paymentAmount, setPaymentAmount] = useState(0);
 
   const handleClick = async () => {
-    const stripe = await stripePromise;
-    const { error, paymentIntent } = await stripe.redirectToCheckout({
-      mode: "payment",
-      lineItems: [{ price: "price_1Oza44SCVBiqJU7SiKFYWsAz", quantity: 1 }],
-      successUrl: `${window.location.origin}/thanks`,
-      cancelUrl: `${window.location.origin}/cancel`,
-    });
-
-    if (error) {
-      console.error("Error:", error);
-    } else {
-      // If payment is successful, send paymentIntent.id to your backend
-      console.log("PaymentIntent ID:", paymentIntent.id);
-      sendPaymentIntentToBackend(paymentIntent.id);
-    }
+    fetch("http://localhost:5000/create-payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ id: "xl-tshirt", price: paymentAmount }],
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => setClientSecret(data.clientSecret));
   };
 
-  const sendPaymentIntentToBackend = async (paymentIntentId) => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/payment/webHook",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ paymentIntentId }),
-        }
-      );
-      if (response.ok) {
-        console.log("PaymentIntent ID sent to backend successfully");
-      } else {
-        console.error("Failed to send PaymentIntent ID to backend");
-      }
-    } catch (error) {
-      console.error("Error sending PaymentIntent ID to backend:", error);
-    }
+  //Form Data
+  const [clientSecret, setClientSecret] = useState("");
+
+  const appearance = {
+    theme: "stripe",
+  };
+  const options = {
+    clientSecret,
+    appearance,
   };
 
   return (
@@ -60,7 +46,12 @@ function Buy() {
             onChange={(e) => setPaymentAmount(e.target.value)}
           />
         </div>
-        <button onClick={handleClick}>Buy Now</button>
+        <button onClick={() => handleClick()}>Buy Now</button>
+        {clientSecret && (
+          <Elements options={options} stripe={stripePromise}>
+            <CheckoutForm />
+          </Elements>
+        )}
       </header>
     </div>
   );

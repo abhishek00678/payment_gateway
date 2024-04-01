@@ -4,8 +4,10 @@ export const handleWebhook = async (req, res) => {
   try {
     const event = req.body;
     console.log("Webhook received:", event);
+
     if (event.type === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object;
+      const paymentIntent = event.data;
+      console.log("king"); // this if block is not working at all enen this line is not printing
       console.log("Payment Intent:", paymentIntent);
 
       // Save order details to database
@@ -16,8 +18,6 @@ export const handleWebhook = async (req, res) => {
       });
 
       await order.save();
-
-      console.log("Order saved:", order);
     }
     res.sendStatus(200);
   } catch (error) {
